@@ -1,0 +1,51 @@
+[package]
+name = "pimalaya-stream"
+description = "Pimalaya streams: TLS/SASL types and blocking I/O sessions"
+version = "0.0.1"
+authors = ["soywod <clement.douin@posteo.net>"]
+rust-version = "1.56"
+edition = "2021"
+license = "MIT"
+keywords = ["pimalaya", "stream", "tls", "sasl"]
+homepage = "https://pimalaya.org"
+documentation = "https://docs.rs/pimalaya-stream/latest/pimalaya_stream"
+repository = "https://github.com/pimalaya/stream"
+
+[package.metadata.docs.rs]
+all-features = true
+rustdoc-args = ["--cfg", "docsrs"]
+
+[features]
+default = ["std", "rustls-ring"]
+std = ["dep:uds_windows"]
+http = ["dep:url"]
+imap = ["dep:io-imap", "dep:url"]
+jmap = ["dep:base64", "dep:io-jmap", "dep:url"]
+smtp = ["dep:gethostname", "dep:io-smtp", "dep:url"]
+native-tls = ["dep:native-tls"]
+rustls-aws = ["dep:rustls", "dep:rustls-platform-verifier", "rustls/aws-lc-rs"]
+rustls-ring = ["dep:rustls", "dep:rustls-platform-verifier", "rustls/ring"]
+vendored = ["native-tls?/vendored"]
+
+[target.'cfg(windows)'.dependencies]
+uds_windows = { version = "1", optional = true }
+
+[dependencies]
+anyhow = "1"
+base64 = { version = "0.22", optional = true }
+gethostname = { version = "1", optional = true }
+io-imap = { version = "0.0.1", default-features = false, optional = true }
+io-jmap = { version = "0.0.1", default-features = false, optional = true }
+io-smtp = { version = "0.0.1", default-features = false, optional = true }
+log = "0.4"
+native-tls = { version = "0.2", optional = true }
+rustls = { version = "0.23", default-features = false, features = ["logging", "std", "tls12"], optional = true }
+rustls-platform-verifier = { version = "0.7", optional = true }
+secrecy = { version = "0.10", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+url = { version = "2.2", optional = true }
+
+[patch.crates-io]
+io-imap = { git = "https://github.com/pimalaya/io-imap", branch = "io" }
+io-jmap.git = "https://github.com/pimalaya/io-jmap"
+io-smtp.git = "https://github.com/pimalaya/io-smtp"
