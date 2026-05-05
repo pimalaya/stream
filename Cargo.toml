@@ -18,10 +18,10 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std", "rustls-ring"]
 std = ["dep:uds_windows"]
-http = ["dep:url"]
-imap = ["dep:io-imap", "dep:url"]
-jmap = ["dep:base64", "dep:io-jmap", "dep:url"]
-smtp = ["dep:gethostname", "dep:io-smtp", "dep:url"]
+http = []
+imap = ["dep:io-imap"]
+jmap = ["dep:base64", "dep:io-jmap"]
+smtp = ["dep:gethostname", "dep:io-smtp"]
 native-tls = ["dep:native-tls"]
 rustls-aws = ["dep:rustls", "dep:rustls-platform-verifier", "rustls/aws-lc-rs"]
 rustls-ring = ["dep:rustls", "dep:rustls-platform-verifier", "rustls/ring"]
@@ -43,7 +43,7 @@ rustls = { version = "0.23", default-features = false, features = ["logging", "s
 rustls-platform-verifier = { version = "0.7", optional = true }
 secrecy = { version = "0.10", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
-url = { version = "2.2", optional = true }
+url = { version = "2.2", default-features = false }
 
 [patch.crates-io]
 io-imap = { git = "https://github.com/pimalaya/io-imap", branch = "io" }

@@ -4,6 +4,7 @@ pub mod http;
 pub mod imap;
 #[cfg(feature = "jmap")]
 pub mod jmap;
+pub mod pool;
 #[cfg(feature = "smtp")]
 pub mod smtp;
 pub mod stream;
