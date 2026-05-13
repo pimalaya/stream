@@ -1,9 +1,5 @@
 #[cfg(feature = "http")]
 pub mod http;
-#[cfg(feature = "imap")]
-pub mod imap;
-#[cfg(feature = "jmap")]
-pub mod jmap;
 pub mod pool;
 #[cfg(feature = "smtp")]
 pub mod smtp;

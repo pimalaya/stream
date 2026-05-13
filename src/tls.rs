@@ -1,4 +1,4 @@
-use std::{fs, path::PathBuf, sync::Arc};
+use std::{fs, net::TcpStream, path::PathBuf, sync::Arc};
 
 use anyhow::{bail, Result};
 use log::debug;
@@ -6,10 +6,17 @@ use log::debug;
 use rustls::{
     crypto::{self, CryptoProvider},
     pki_types::{pem::PemObject, CertificateDer},
-    ClientConfig,
+    ClientConfig, ClientConnection, StreamOwned,
 };
 #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
 use rustls_platform_verifier::{ConfigVerifierExt, Verifier};
+
+#[cfg(any(
+    feature = "rustls-aws",
+    feature = "rustls-ring",
+    feature = "native-tls"
+))]
+use crate::std::stream::Stream;
 
 #[derive(Clone, Debug, Default)]
 pub struct Tls {
@@ -133,4 +140,42 @@ pub struct Rustls {
 pub enum RustlsCrypto {
     Aws,
     Ring,
+}
+
+/// Wraps a connected [`TcpStream`] in a TLS session, picking the
+/// provider declared by `tls`. `host` is used as SNI / hostname
+/// verification target, and `alpn` is the ALPN protocol list (e.g.
+/// `&[b"imap"]`, `&[b"smtp"]`, or `&[b"http/1.1"]`); pass an empty
+/// slice to skip ALPN negotiation.
+#[cfg(any(
+    feature = "rustls-aws",
+    feature = "rustls-ring",
+    feature = "native-tls"
+))]
+pub fn upgrade_tls(host: &str, tcp: TcpStream, tls: &Tls, alpn: &[&[u8]]) -> Result<Stream> {
+    match tls.provider()? {
+        #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
+        TlsProvider::Rustls => {
+            let mut config = tls.build_rustls_client_config()?;
+            config.alpn_protocols = alpn.iter().map(|p| p.to_vec()).collect();
+            let server_name = host.to_string().try_into()?;
+            let conn = ClientConnection::new(Arc::new(config), server_name)?;
+            Ok(Stream::Rustls(StreamOwned::new(conn, tcp)))
+        }
+        #[cfg(feature = "native-tls")]
+        TlsProvider::NativeTls => {
+            let mut builder = native_tls::TlsConnector::builder();
+
+            if let Some(pem_path) = &tls.cert {
+                let pem = fs::read(pem_path)?;
+                let cert = native_tls::Certificate::from_pem(&pem)?;
+                builder.add_root_certificate(cert);
+            }
+
+            let connector = builder.build()?;
+            Ok(Stream::NativeTls(connector.connect(host, tcp)?))
+        }
+        #[allow(unreachable_patterns)]
+        _ => unreachable!(),
+    }
 }
