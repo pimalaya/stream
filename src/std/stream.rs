@@ -1,26 +1,26 @@
 //! # Blocking std stream
 //!
-//! [`Stream`] is the single transport handle used by every Pimalaya
+//! [`StreamStd`] is the single transport handle used by every Pimalaya
 //! `io-*` protocol crate: a plain TCP socket, a Unix-domain socket,
 //! a `rustls`-wrapped TLS session, or a `native-tls`-wrapped TLS
-//! session — all behind one `Read + Write` enum.
+//! session — all behind one `Read + Write` type.
 //!
 //! Constructors live as inherent methods:
 //!
 //! - [`connect_tcp`] / [`connect_unix`] — plain transports.
 //! - [`connect_tls`] — opens TCP and runs the TLS handshake (implicit
 //!   TLS, the `imaps`/`smtps`/`https` style).
-//! - [`upgrade_tls`] — consumes a plain [`Stream::Tcp`] and returns a
-//!   TLS-wrapped variant (STARTTLS style).
+//! - [`upgrade_tls`] — consumes a plain TCP variant and returns a
+//!   TLS-wrapped one (STARTTLS style).
 //!
 //! ALPN, crypto provider and the extra trust anchor are user-facing
 //! knobs on [`Tls`] / [`Rustls`] — stream just reads them. ALPN
 //! lookup applies only to rustls; native-tls ignores it.
 //!
-//! [`connect_tcp`]: Stream::connect_tcp
-//! [`connect_unix`]: Stream::connect_unix
-//! [`connect_tls`]: Stream::connect_tls
-//! [`upgrade_tls`]: Stream::upgrade_tls
+//! [`connect_tcp`]: StreamStd::connect_tcp
+//! [`connect_unix`]: StreamStd::connect_unix
+//! [`connect_tls`]: StreamStd::connect_tls
+//! [`upgrade_tls`]: StreamStd::upgrade_tls
 //! [`Tls`]: crate::tls::Tls
 //! [`Rustls`]: crate::tls::Rustls
 
@@ -41,7 +41,7 @@ use uds_windows::UnixStream;
 use crate::tls::{Tls, TlsProvider};
 
 #[derive(Debug)]
-enum StreamKind {
+enum Stream {
     Tcp(TcpStream),
     Unix(UnixStream),
     #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
@@ -51,67 +51,56 @@ enum StreamKind {
 }
 
 #[derive(Debug)]
-pub struct Stream {
-    inner: StreamKind,
+pub struct StreamStd {
+    inner: Stream,
     host: String,
 }
 
-impl Stream {
+impl StreamStd {
     /// Opens a Unix-domain socket at `path`.
-    pub fn connect_unix<P: AsRef<Path>>(path: P) -> io::Result<Stream> {
+    pub fn connect_unix<P: AsRef<Path>>(path: P) -> Result<StreamStd> {
         trace!("connecting Unix stream to {}", path.as_ref().display());
-        let inner = StreamKind::Unix(UnixStream::connect(path)?);
+        let inner = Stream::Unix(UnixStream::connect(path)?);
         let host = String::from("127.0.0.1");
         Ok(Self { inner, host })
     }
 
     /// Opens a plain TCP connection to `host:port`.
-    pub fn connect_tcp(host: impl ToString, port: u16) -> io::Result<Stream> {
+    pub fn connect_tcp(host: impl ToString, port: u16) -> Result<StreamStd> {
         let host = host.to_string();
         trace!("connecting TCP stream to {host}:{port}");
-        let inner = StreamKind::Tcp(TcpStream::connect((host.as_str(), port))?);
+        let inner = Stream::Tcp(TcpStream::connect((host.as_str(), port))?);
         Ok(Self { inner, host })
     }
 
     /// Opens a TCP connection to `host:port` and runs the TLS
     /// handshake using `tls`. ALPN, crypto provider and the extra
     /// trust anchor are read from `tls`.
-    pub fn connect_tls(host: impl ToString, port: u16, tls: &Tls) -> Result<Stream> {
+    pub fn connect_tls(host: impl ToString, port: u16, tls: &Tls) -> Result<StreamStd> {
         let host = host.to_string();
         trace!("connecting TLS stream to {host}:{port}");
         let tcp = TcpStream::connect((host.as_str(), port))?;
         Self::_upgrade_tls(host, tcp, tls)
     }
 
-    /// Consumes a plain [`Stream::Tcp`] and wraps it in a TLS
+    /// Consumes a plain TCP [`StreamStd`] and wraps it in a TLS
     /// session — the STARTTLS upgrade path. Fails if `self` is a
     /// Unix-domain socket or already a TLS variant.
-    pub fn upgrade_tls(self, tls: &Tls) -> Result<Stream> {
+    pub fn upgrade_tls(self, tls: &Tls) -> Result<StreamStd> {
         match self.inner {
-            StreamKind::Tcp(tcp) => {
+            Stream::Tcp(tcp) => {
                 trace!("upgrading TCP stream to TLS for {}", self.host);
                 Self::_upgrade_tls(self.host, tcp, tls)
             }
-            StreamKind::Unix(_) => bail!("cannot upgrade Unix-domain stream to TLS"),
+            Stream::Unix(_) => bail!("cannot upgrade Unix-domain stream to TLS"),
             #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
-            StreamKind::Rustls(_) => bail!("stream is already wrapped in rustls"),
+            Stream::Rustls(_) => bail!("stream is already wrapped in rustls"),
             #[cfg(feature = "native-tls")]
-            StreamKind::NativeTls(_) => bail!("stream is already wrapped in native-tls"),
+            Stream::NativeTls(_) => bail!("stream is already wrapped in native-tls"),
         }
     }
 
-    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
-        match &self.inner {
-            StreamKind::Tcp(s) => s.set_read_timeout(timeout),
-            StreamKind::Unix(s) => s.set_read_timeout(timeout),
-            #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
-            StreamKind::Rustls(s) => s.sock.set_read_timeout(timeout),
-            #[cfg(feature = "native-tls")]
-            StreamKind::NativeTls(s) => s.get_ref().set_read_timeout(timeout),
-        }
-    }
-
-    fn _upgrade_tls(host: String, tcp: TcpStream, tls: &Tls) -> Result<Stream> {
+    fn _upgrade_tls(host: String, tcp: TcpStream, tls: &Tls) -> Result<StreamStd> {
         let provider = match &tls.provider {
             #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
             Some(TlsProvider::Rustls) => TlsProvider::Rustls,
@@ -202,8 +191,8 @@ impl Stream {
 
                 let server_name = host.to_string().try_into()?;
                 let conn = ClientConnection::new(Arc::new(config), server_name)?;
-                let inner = StreamKind::Rustls(StreamOwned::new(conn, tcp));
-                Ok(Stream { inner, host })
+                let inner = Stream::Rustls(StreamOwned::new(conn, tcp));
+                Ok(StreamStd { inner, host })
             }
 
             #[cfg(feature = "native-tls")]
@@ -224,8 +213,8 @@ impl Stream {
                 }
 
                 let connector = builder.build()?;
-                let inner = Stream::NativeTls(connector.connect(host, tcp)?);
-                Ok(Stream { inner, host })
+                let inner = Stream::NativeTls(connector.connect(host.as_str(), tcp)?);
+                Ok(StreamStd { inner, host })
             }
 
             // SAFETY: case already handled
@@ -235,39 +224,52 @@ impl Stream {
     }
 }
 
-impl Read for Stream {
+impl Read for StreamStd {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
         match &mut self.inner {
-            StreamKind::Tcp(s) => s.read(buf),
-            StreamKind::Unix(s) => s.read(buf),
+            Stream::Tcp(s) => s.read(buf),
+            Stream::Unix(s) => s.read(buf),
             #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
-            StreamKind::Rustls(s) => s.read(buf),
+            Stream::Rustls(s) => s.read(buf),
             #[cfg(feature = "native-tls")]
-            StreamKind::NativeTls(s) => s.read(buf),
+            Stream::NativeTls(s) => s.read(buf),
         }
     }
 }
 
-impl Write for Stream {
+impl Write for StreamStd {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
         match &mut self.inner {
-            StreamKind::Tcp(s) => s.write(buf),
-            StreamKind::Unix(s) => s.write(buf),
+            Stream::Tcp(s) => s.write(buf),
+            Stream::Unix(s) => s.write(buf),
             #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
-            StreamKind::Rustls(s) => s.write(buf),
+            Stream::Rustls(s) => s.write(buf),
             #[cfg(feature = "native-tls")]
-            StreamKind::NativeTls(s) => s.write(buf),
+            Stream::NativeTls(s) => s.write(buf),
         }
     }
 
     fn flush(&mut self) -> io::Result<()> {
         match &mut self.inner {
-            StreamKind::Tcp(s) => s.flush(),
-            StreamKind::Unix(s) => s.flush(),
+            Stream::Tcp(s) => s.flush(),
+            Stream::Unix(s) => s.flush(),
             #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
-            StreamKind::Rustls(s) => s.flush(),
+            Stream::Rustls(s) => s.flush(),
             #[cfg(feature = "native-tls")]
-            StreamKind::NativeTls(s) => s.flush(),
+            Stream::NativeTls(s) => s.flush(),
+        }
+    }
+}
+
+impl StreamStd {
+    pub fn set_read_timeout(&self, timeout: Option<Duration>) -> io::Result<()> {
+        match &self.inner {
+            Stream::Tcp(s) => s.set_read_timeout(timeout),
+            Stream::Unix(s) => s.set_read_timeout(timeout),
+            #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
+            Stream::Rustls(s) => s.sock.set_read_timeout(timeout),
+            #[cfg(feature = "native-tls")]
+            Stream::NativeTls(s) => s.get_ref().set_read_timeout(timeout),
         }
     }
 }
