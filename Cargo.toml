@@ -16,13 +16,11 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["std", "rustls-ring"]
+default = ["rustls-ring"]
 std = ["dep:uds_windows"]
-http = []
-smtp = ["dep:gethostname", "dep:io-smtp"]
-native-tls = ["dep:native-tls"]
-rustls-aws = ["dep:rustls", "dep:rustls-platform-verifier", "rustls/aws-lc-rs"]
-rustls-ring = ["dep:rustls", "dep:rustls-platform-verifier", "rustls/ring"]
+native-tls = ["std", "dep:native-tls"]
+rustls-aws = ["std", "dep:rustls", "dep:rustls-platform-verifier", "rustls/aws-lc-rs"]
+rustls-ring = ["std", "dep:rustls", "dep:rustls-platform-verifier", "rustls/ring"]
 vendored = ["native-tls?/vendored"]
 
 [target.'cfg(windows)'.dependencies]
@@ -30,8 +28,6 @@ uds_windows = { version = "1", optional = true }
 
 [dependencies]
 anyhow = "1"
-gethostname = { version = "1", optional = true }
-io-smtp = { version = "0.0.1", default-features = false, optional = true }
 log = "0.4"
 native-tls = { version = "0.2", optional = true }
 rustls = { version = "0.23", default-features = false, features = ["logging", "std", "tls12"], optional = true }
@@ -40,5 +36,3 @@ secrecy = { version = "0.10", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 url = { version = "2.2", default-features = false }
 
-[patch.crates-io]
-io-smtp.git = "https://github.com/pimalaya/io-smtp"

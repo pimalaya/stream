@@ -16,7 +16,7 @@ use rustls_platform_verifier::{ConfigVerifierExt, Verifier};
     feature = "rustls-ring",
     feature = "native-tls"
 ))]
-use crate::std::stream::Stream;
+use super::stream::Stream;
 
 #[derive(Clone, Debug, Default)]
 pub struct Tls {

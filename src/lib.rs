@@ -3,4 +3,3 @@
 pub mod sasl;
 #[cfg(feature = "std")]
 pub mod std;
-pub mod tls;
