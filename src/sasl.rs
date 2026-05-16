@@ -1,18 +1,17 @@
 use secrecy::SecretString;
 
 #[derive(Clone, Debug)]
-pub struct Sasl {
-    pub mechanism: Option<SaslMechanism>,
-    pub login: Option<SaslLogin>,
-    pub plain: Option<SaslPlain>,
-    pub anonymous: Option<SaslAnonymous>,
-}
-
-#[derive(Clone, Debug)]
 pub enum SaslMechanism {
     Login,
     Plain,
     Anonymous,
+}
+
+#[derive(Clone, Debug)]
+pub enum Sasl {
+    Login(SaslLogin),
+    Plain(SaslPlain),
+    Anonymous(SaslAnonymous),
 }
 
 #[derive(Clone, Debug)]
