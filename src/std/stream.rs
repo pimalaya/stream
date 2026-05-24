@@ -38,7 +38,7 @@ use log::trace;
 #[cfg(windows)]
 use uds_windows::UnixStream;
 
-use crate::tls::{Tls, TlsProvider};
+use crate::tls::Tls;
 
 #[derive(Debug)]
 enum Stream {
@@ -100,7 +100,21 @@ impl StreamStd {
         }
     }
 
+    #[cfg(not(feature = "rustls-aws"))]
+    #[cfg(not(feature = "rustls-ring"))]
+    #[cfg(not(feature = "native-tls"))]
+    fn _upgrade_tls(_: String, _: TcpStream, _: &Tls) -> Result<StreamStd> {
+        bail!("missing cargo feature: `rustls-aws`, `rustls-ring` or `native-tls`")
+    }
+
+    #[cfg(any(
+        feature = "rustls-aws",
+        feature = "rustls-ring",
+        feature = "native-tls"
+    ))]
     fn _upgrade_tls(host: String, tcp: TcpStream, tls: &Tls) -> Result<StreamStd> {
+        use crate::tls::TlsProvider;
+
         let provider = match &tls.provider {
             #[cfg(any(feature = "rustls-aws", feature = "rustls-ring"))]
             Some(TlsProvider::Rustls) => TlsProvider::Rustls,
@@ -119,10 +133,6 @@ impl StreamStd {
             #[cfg(not(feature = "rustls-ring"))]
             #[cfg(feature = "native-tls")]
             None => TlsProvider::NativeTls,
-            #[cfg(not(feature = "rustls-aws",))]
-            #[cfg(not(feature = "rustls-ring",))]
-            #[cfg(not(feature = "native-tls"))]
-            None => bail!("missing cargo feature: `rustls-aws`, `rustls-ring` or `native-tls`"),
         };
 
         match provider {
