@@ -16,7 +16,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = ["rustls-ring"]
+default = []
 std = ["dep:uds_windows"]
 native-tls = ["std", "dep:native-tls"]
 rustls-aws = ["std", "dep:rustls", "dep:rustls-platform-verifier", "rustls/aws-lc-rs"]
