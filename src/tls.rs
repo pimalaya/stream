@@ -5,6 +5,12 @@
 //! `connect_tls` / `upgrade_tls`); the actual TLS backend types
 //! (`rustls`, `native-tls`) never escape this crate.
 //!
+//! ALPN lives on [`Rustls`] rather than [`Tls`] because `native-tls`
+//! does not expose an ALPN configuration knob. Protocol crates
+//! (`io-imap`, `io-smtp`, `io-http`, ...) ship `default_alpn()`
+//! helpers so config layers can populate `rustls.alpn` with a
+//! sensible default before calling `connect_tls`.
+//!
 //! [`std::stream::Stream`]: crate::std::stream::Stream
 
 use std::path::PathBuf;
@@ -35,8 +41,8 @@ pub struct Rustls {
     /// otherwise `aws-lc-rs`.
     pub crypto: Option<RustlsCrypto>,
     /// ALPN protocol identifiers offered during the handshake (e.g.
-    /// `vec!["imap".into()]`, `vec!["http/1.1".into()]`). `None` or
-    /// empty skips ALPN negotiation.
+    /// `vec!["imap".into()]`, `vec!["http/1.1".into()]`). An empty
+    /// vec skips ALPN negotiation. Ignored by `native-tls`.
     pub alpn: Vec<String>,
 }
 

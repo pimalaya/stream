@@ -14,8 +14,8 @@
 //!   TLS-wrapped one (STARTTLS style).
 //!
 //! ALPN, crypto provider and the extra trust anchor are user-facing
-//! knobs on [`Tls`] / [`Rustls`] — stream just reads them. ALPN
-//! lookup applies only to rustls; native-tls ignores it.
+//! knobs on [`Tls`] / [`Rustls`]; stream just reads them. ALPN
+//! applies only to rustls; native-tls ignores it.
 //!
 //! [`connect_tcp`]: StreamStd::connect_tcp
 //! [`connect_unix`]: StreamStd::connect_unix
@@ -84,7 +84,7 @@ impl StreamStd {
     }
 
     /// Consumes a plain TCP [`StreamStd`] and wraps it in a TLS
-    /// session — the STARTTLS upgrade path. Fails if `self` is a
+    /// session: the STARTTLS upgrade path. Fails if `self` is a
     /// Unix-domain socket or already a TLS variant.
     pub fn upgrade_tls(self, tls: &Tls) -> Result<StreamStd> {
         match self.inner {
