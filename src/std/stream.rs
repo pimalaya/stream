@@ -1,28 +1,9 @@
-//! # Blocking std stream
+//! Blocking std transport handle.
 //!
-//! [`StreamStd`] is the single transport handle used by every Pimalaya
-//! `io-*` protocol crate: a plain TCP socket, a Unix-domain socket,
-//! a `rustls`-wrapped TLS session, or a `native-tls`-wrapped TLS
-//! session — all behind one `Read + Write` type.
-//!
-//! Constructors live as inherent methods:
-//!
-//! - [`connect_tcp`] / [`connect_unix`] — plain transports.
-//! - [`connect_tls`] — opens TCP and runs the TLS handshake (implicit
-//!   TLS, the `imaps`/`smtps`/`https` style).
-//! - [`upgrade_tls`] — consumes a plain TCP variant and returns a
-//!   TLS-wrapped one (STARTTLS style).
-//!
-//! ALPN, crypto provider and the extra trust anchor are user-facing
-//! knobs on [`Tls`] / [`Rustls`]; stream just reads them. ALPN
-//! applies only to rustls; native-tls ignores it.
-//!
-//! [`connect_tcp`]: StreamStd::connect_tcp
-//! [`connect_unix`]: StreamStd::connect_unix
-//! [`connect_tls`]: StreamStd::connect_tls
-//! [`upgrade_tls`]: StreamStd::upgrade_tls
-//! [`Tls`]: crate::tls::Tls
-//! [`Rustls`]: crate::tls::Rustls
+//! [`StreamStd`] is a single `Read + Write` type wrapping a TCP socket, a
+//! Unix-domain socket or a TLS session (`rustls` or `native-tls`). TLS
+//! options (provider, crypto, ALPN, extra trust anchor) come from
+//! [`Tls`](crate::tls::Tls).
 
 #[cfg(unix)]
 use std::os::unix::net::UnixStream;
@@ -33,7 +14,7 @@ use std::{
     time::Duration,
 };
 
-use anyhow::{bail, Result};
+use anyhow::{Result, bail};
 use log::trace;
 #[cfg(windows)]
 use uds_windows::UnixStream;
@@ -50,6 +31,8 @@ enum Stream {
     NativeTls(native_tls::TlsStream<TcpStream>),
 }
 
+/// Blocking transport handle: TCP, Unix-domain or TLS, behind one
+/// `Read + Write`.
 #[derive(Debug)]
 pub struct StreamStd {
     inner: Stream,
@@ -73,9 +56,7 @@ impl StreamStd {
         Ok(Self { inner, host })
     }
 
-    /// Opens a TCP connection to `host:port` and runs the TLS
-    /// handshake using `tls`. ALPN, crypto provider and the extra
-    /// trust anchor are read from `tls`.
+    /// Opens a TCP connection and runs the TLS handshake (implicit TLS).
     pub fn connect_tls(host: impl ToString, port: u16, tls: &Tls) -> Result<StreamStd> {
         let host = host.to_string();
         trace!("connecting TLS stream to {host}:{port}");
@@ -83,9 +64,9 @@ impl StreamStd {
         Self::_upgrade_tls(host, tcp, tls)
     }
 
-    /// Consumes a plain TCP [`StreamStd`] and wraps it in a TLS
-    /// session: the STARTTLS upgrade path. Fails if `self` is a
-    /// Unix-domain socket or already a TLS variant.
+    /// Wraps a plain TCP stream in a TLS session (STARTTLS upgrade).
+    ///
+    /// Fails on Unix-domain or already-TLS variants.
     pub fn upgrade_tls(self, tls: &Tls) -> Result<StreamStd> {
         match self.inner {
             Stream::Tcp(tcp) => {
@@ -141,9 +122,9 @@ impl StreamStd {
                 use std::{fs, sync::Arc};
 
                 use rustls::{
-                    crypto::{self, CryptoProvider},
-                    pki_types::{pem::PemObject, CertificateDer},
                     ClientConfig, ClientConnection, StreamOwned,
+                    crypto::{self, CryptoProvider},
+                    pki_types::{CertificateDer, pem::PemObject},
                 };
                 use rustls_platform_verifier::{ConfigVerifierExt, Verifier};
 

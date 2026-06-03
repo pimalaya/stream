@@ -1,5 +1,5 @@
 {
-  description = "Pimalaya streams: TLS/SASL types and blocking I/O sessions";
+  description = "Stream, TLS and SASL utils for Pimalaya";
 
   inputs = {
     nixpkgs = {

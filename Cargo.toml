@@ -1,11 +1,11 @@
 [package]
 name = "pimalaya-stream"
-description = "Pimalaya streams: TLS/SASL types and blocking I/O sessions"
+description = "Stream, TLS and SASL utils for Pimalaya"
 version = "0.0.1"
 authors = ["soywod <clement.douin@posteo.net>"]
-rust-version = "1.56"
-edition = "2021"
-license = "MIT"
+rust-version = "1.87"
+edition = "2024"
+license = "MIT OR Apache-2.0"
 keywords = ["pimalaya", "stream", "tls", "sasl", "tcp"]
 homepage = "https://pimalaya.org"
 documentation = "https://docs.rs/pimalaya-stream/latest/pimalaya_stream"
@@ -16,7 +16,7 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
+default = ["rustls-ring"]
 std = ["dep:uds_windows"]
 native-tls = ["std", "dep:native-tls"]
 rustls-aws = ["std", "dep:rustls", "dep:rustls-platform-verifier", "rustls/aws-lc-rs"]
@@ -35,4 +35,3 @@ rustls-platform-verifier = { version = "0.7", optional = true }
 secrecy = { version = "0.10", features = ["serde"] }
 serde = { version = "1", features = ["derive"] }
 url = { version = "2.2", default-features = false }
-
