@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.1] - 2026-06-03
+
 ### Added
 
 - Added the protocol-agnostic `Sasl` enum and `SaslMechanism` tag.
@@ -37,4 +39,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Forwarded to `native-tls/vendored` so consumers can compile the underlying TLS dependencies in vendored mode.
 
-[unreleased]: https://github.com/pimalaya/stream/compare/root..HEAD
+[unreleased]: https://github.com/pimalaya/stream/compare/v0.0.1..HEAD
+[0.0.1]: https://github.com/pimalaya/himalaya/compare/root...v0.0.1
