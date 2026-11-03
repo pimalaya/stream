@@ -1,7 +1,7 @@
 [package]
 name = "pimalaya-stream"
 description = "Blocking stream and TLS utils for Pimalaya"
-version = "0.3.0"
+version = "0.3.1"
 authors = ["Clément DOUIN (soywod) <pimalaya.org@posteo.net>"]
 rust-version = "1.89"
 edition = "2024"
@@ -44,10 +44,10 @@ env_logger = "0.11"
 
 [dependencies]
 anyhow = { version = "1", default-features = false, features = ["std"] }
-io-proxy = { version = "0.1", optional = true, default-features = false, features = ["socks5", "http", "client"] }
+io-proxy = { version = "0.1.1", optional = true, default-features = false, features = ["socks5", "http", "client"] }
 log = { version = "0.4", default-features = false }
 native-tls = { version = "0.2", default-features = false, optional = true }
-rustls = { version = "0.23", default-features = false, features = ["logging", "std", "tls12"], optional = true }
+rustls = { version = "0.23.46", default-features = false, features = ["logging", "std", "tls12"], optional = true }
 rustls-platform-verifier = { version = "0.7", default-features = false, optional = true }
 secrecy = { version = "0.10", default-features = false }
 url = { version = "2.2", default-features = false }
