@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `tls::Identity` and `Tls::identity`, a client certificate and its private key as PEM paths, presented when the server asks for one (mutual TLS). Both backends present it; native-tls reads a PKCS#8 key only, rustls PKCS#1 and SEC1 too. Unset by default, so nothing changes for a consumer that does not name one.
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed

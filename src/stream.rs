@@ -2,7 +2,8 @@
 //!
 //! [`Stream`] is a single `Read + Write` type wrapping a TCP socket, a
 //! Unix-domain socket or a TLS session (`rustls` or `native-tls`). TLS
-//! options (provider, crypto, ALPN, a pinned certificate) come from
+//! options (provider, crypto, ALPN, a pinned certificate, a client
+//! certificate) come from
 //! [`Tls`].
 //!
 //! A stream is opened by one of the `connect_*` methods, each taking the
@@ -221,9 +222,9 @@ impl Stream {
                 use rustls::{
                     ClientConfig, ClientConnection, StreamOwned,
                     crypto::{self, CryptoProvider},
-                    pki_types::{CertificateDer, pem::PemObject},
+                    pki_types::{CertificateDer, PrivateKeyDer, pem::PemObject},
                 };
-                use rustls_platform_verifier::{ConfigVerifierExt, Verifier};
+                use rustls_platform_verifier::{BuilderVerifierExt, Verifier};
 
                 use crate::tls::RustlsCrypto;
 
@@ -251,7 +252,7 @@ impl Stream {
                     Err(crypto_provider) => crypto_provider,
                 };
 
-                let mut config = if let Some(pem_path) = &tls.cert {
+                let builder = if let Some(pem_path) = &tls.cert {
                     trace!("using TLS cert at {}", pem_path.display());
                     let pem = fs::read(pem_path)?;
 
@@ -277,10 +278,31 @@ impl Stream {
                     ClientConfig::builder()
                         .dangerous()
                         .with_custom_certificate_verifier(Arc::new(verifier))
-                        .with_no_client_auth()
                 } else {
                     trace!("using platform TLS certs");
-                    ClientConfig::with_platform_verifier()?
+                    ClientConfig::builder().with_platform_verifier()?
+                };
+
+                let mut config = if let Some(identity) = &tls.identity {
+                    trace!(
+                        "using TLS client cert at {} with key at {}",
+                        identity.cert.display(),
+                        identity.key.display()
+                    );
+
+                    let pem = fs::read(&identity.cert)?;
+                    let chain =
+                        CertificateDer::pem_slice_iter(&pem).collect::<Result<Vec<_>, _>>()?;
+                    if chain.is_empty() {
+                        bail!("empty TLS client cert at {}", identity.cert.display())
+                    }
+
+                    let pem = fs::read(&identity.key)?;
+                    let key = PrivateKeyDer::from_pem_slice(&pem)?;
+
+                    builder.with_client_auth_cert(chain, key)?
+                } else {
+                    builder.with_no_client_auth()
                 };
 
                 config.alpn_protocols = tls
@@ -301,7 +323,7 @@ impl Stream {
             TlsProvider::NativeTls => {
                 use std::fs;
 
-                use native_tls::{Certificate, TlsConnector};
+                use native_tls::{Certificate, Identity, TlsConnector};
 
                 let mut builder = TlsConnector::builder();
 
@@ -312,6 +334,17 @@ impl Stream {
                     builder.add_root_certificate(cert);
                 } else {
                     trace!("using platform TLS certs");
+                }
+
+                if let Some(identity) = &tls.identity {
+                    trace!(
+                        "using TLS client cert at {} with key at {}",
+                        identity.cert.display(),
+                        identity.key.display()
+                    );
+                    let cert = fs::read(&identity.cert)?;
+                    let key = fs::read(&identity.key)?;
+                    builder.identity(Identity::from_pkcs8(&cert, &key)?);
                 }
 
                 let connector = builder.build()?;

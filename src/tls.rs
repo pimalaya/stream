@@ -30,6 +30,20 @@ pub struct Tls {
     /// else used as an extra trust anchor; under native-tls, a root
     /// certificate.
     pub cert: Option<PathBuf>,
+    /// Optional client certificate, presented when the server asks for
+    /// one (mutual TLS). `None` presents nothing.
+    pub identity: Option<Identity>,
+}
+
+/// A client certificate and its private key, as paths to PEM files.
+#[derive(Clone, Debug)]
+pub struct Identity {
+    /// The certificate, optionally followed by the intermediates the
+    /// server needs to build the chain.
+    pub cert: PathBuf,
+    /// The private key. PKCS#8 (`BEGIN PRIVATE KEY`) is the form both
+    /// backends read; rustls also reads PKCS#1 and SEC1.
+    pub key: PathBuf,
 }
 
 /// TLS backend selector.
