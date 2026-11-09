@@ -24,20 +24,28 @@ pub struct Tls {
     /// Rustls-specific options. Ignored when the resolved provider is
     /// [`TlsProvider::NativeTls`].
     pub rustls: Rustls,
-    /// Optional certificate to trust, as a path to a PEM file.
+    /// Optional certificate to trust in the server. `None` relies on
+    /// the platform trust store alone.
+    pub server: Option<TlsServer>,
+    /// Optional certificate the client presents when the server asks for
+    /// one (mutual TLS). `None` presents nothing.
+    pub client: Option<TlsClient>,
+}
+
+/// What the client trusts in the server, beyond the platform store.
+#[derive(Clone, Debug)]
+pub struct TlsServer {
+    /// A certificate as a path to a PEM file.
     ///
     /// Under rustls it is pinned to the server's leaf (e.g. Proton Bridge),
     /// else used as an extra trust anchor; under native-tls, a root
     /// certificate.
-    pub cert: Option<PathBuf>,
-    /// Optional client certificate, presented when the server asks for
-    /// one (mutual TLS). `None` presents nothing.
-    pub identity: Option<Identity>,
+    pub cert: PathBuf,
 }
 
-/// A client certificate and its private key, as paths to PEM files.
+/// The client's own certificate and private key, as paths to PEM files.
 #[derive(Clone, Debug)]
-pub struct Identity {
+pub struct TlsClient {
     /// The certificate, optionally followed by the intermediates the
     /// server needs to build the chain.
     pub cert: PathBuf,

@@ -20,7 +20,7 @@ use std::{
 use pimalaya_stream::{
     proxy::Proxy,
     stream::{Stream, TlsConnectOptions},
-    tls::{Identity, Tls, TlsProvider},
+    tls::{Tls, TlsClient, TlsProvider, TlsServer},
 };
 use rcgen::{BasicConstraints, CertificateParams, ExtendedKeyUsagePurpose, IsCa, Issuer, KeyPair};
 use rustls::{
@@ -108,12 +108,14 @@ fn serve(pki: &Pki) -> (u16, thread::JoinHandle<Result<(), String>>) {
     (port, handle)
 }
 
-fn tls(pki: &Pki, identity: bool) -> TlsConnectOptions {
+fn tls(pki: &Pki, client: bool) -> TlsConnectOptions {
     TlsConnectOptions {
         tls: Tls {
             provider: Some(TlsProvider::Rustls),
-            cert: Some(pki.ca.clone()),
-            identity: identity.then(|| Identity {
+            server: Some(TlsServer {
+                cert: pki.ca.clone(),
+            }),
+            client: client.then(|| TlsClient {
                 cert: pki.client_cert.clone(),
                 key: pki.client_key.clone(),
             }),
@@ -126,7 +128,7 @@ fn tls(pki: &Pki, identity: bool) -> TlsConnectOptions {
 
 #[test]
 fn presents_the_client_certificate() {
-    let pki = pki("identity");
+    let pki = pki("client");
     let (port, server) = serve(&pki);
 
     let mut stream = Stream::connect_tls("localhost", port, tls(&pki, true)).unwrap();
@@ -139,7 +141,7 @@ fn presents_the_client_certificate() {
 
 #[test]
 fn without_one_the_server_refuses() {
-    let pki = pki("no-identity");
+    let pki = pki("no-client");
     let (port, server) = serve(&pki);
 
     // NOTE: under TLS 1.3 the client finishes first, so the refusal

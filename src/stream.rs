@@ -252,12 +252,12 @@ impl Stream {
                     Err(crypto_provider) => crypto_provider,
                 };
 
-                let builder = if let Some(pem_path) = &tls.cert {
-                    trace!("using TLS cert at {}", pem_path.display());
-                    let pem = fs::read(pem_path)?;
+                let builder = if let Some(server) = &tls.server {
+                    trace!("using TLS server cert at {}", server.cert.display());
+                    let pem = fs::read(&server.cert)?;
 
                     let Some(cert) = CertificateDer::pem_slice_iter(&pem).next() else {
-                        bail!("empty TLS cert at {}", pem_path.display())
+                        bail!("empty TLS server cert at {}", server.cert.display())
                     };
                     let cert = cert?;
 
@@ -283,21 +283,21 @@ impl Stream {
                     ClientConfig::builder().with_platform_verifier()?
                 };
 
-                let mut config = if let Some(identity) = &tls.identity {
+                let mut config = if let Some(client) = &tls.client {
                     trace!(
                         "using TLS client cert at {} with key at {}",
-                        identity.cert.display(),
-                        identity.key.display()
+                        client.cert.display(),
+                        client.key.display()
                     );
 
-                    let pem = fs::read(&identity.cert)?;
+                    let pem = fs::read(&client.cert)?;
                     let chain =
                         CertificateDer::pem_slice_iter(&pem).collect::<Result<Vec<_>, _>>()?;
                     if chain.is_empty() {
-                        bail!("empty TLS client cert at {}", identity.cert.display())
+                        bail!("empty TLS client cert at {}", client.cert.display())
                     }
 
-                    let pem = fs::read(&identity.key)?;
+                    let pem = fs::read(&client.key)?;
                     let key = PrivateKeyDer::from_pem_slice(&pem)?;
 
                     builder.with_client_auth_cert(chain, key)?
@@ -327,23 +327,23 @@ impl Stream {
 
                 let mut builder = TlsConnector::builder();
 
-                if let Some(pem_path) = &tls.cert {
-                    trace!("using TLS cert at {}", pem_path.display());
-                    let pem = fs::read(pem_path)?;
+                if let Some(server) = &tls.server {
+                    trace!("using TLS server cert at {}", server.cert.display());
+                    let pem = fs::read(&server.cert)?;
                     let cert = Certificate::from_pem(&pem)?;
                     builder.add_root_certificate(cert);
                 } else {
                     trace!("using platform TLS certs");
                 }
 
-                if let Some(identity) = &tls.identity {
+                if let Some(client) = &tls.client {
                     trace!(
                         "using TLS client cert at {} with key at {}",
-                        identity.cert.display(),
-                        identity.key.display()
+                        client.cert.display(),
+                        client.key.display()
                     );
-                    let cert = fs::read(&identity.cert)?;
-                    let key = fs::read(&identity.key)?;
+                    let cert = fs::read(&client.cert)?;
+                    let key = fs::read(&client.key)?;
                     builder.identity(Identity::from_pkcs8(&cert, &key)?);
                 }
 
