@@ -4,9 +4,6 @@ Blocking stream and TLS utils for Pimalaya
 
 It opens the streams those clients run on: TCP, TLS and Unix-domain sockets, proxy resolution, and the plain-to-TLS upgrade STARTTLS needs. Anyone building a client on io-imap, io-smtp, io-http or a sibling is a first-class consumer.
 
-> [!NOTE]
-> The crate stays on 0.x, which means breaking changes land in minor bumps and never in patch bumps. Pin a minor version and read the [changelog](./CHANGELOG.md) before upgrading.
-
 ## Table of contents
 
 - [Features](#features)
@@ -20,13 +17,10 @@ It opens the streams those clients run on: TCP, TLS and Unix-domain sockets, pro
 
 ## Features
 
-- **Blocking stream**: one handle over a TCP socket, a Unix-domain socket or a TLS session, with the STARTTLS upgrade (requires `std` feature).
-- **Proxy**: tunnel through SOCKS5 or HTTP `CONNECT`, resolved from the ambient proxy variables by default (requires `std` feature).
-- **Retry**: a socket reporting it is not ready is retried under a per-stream strategy, instead of ending the exchange (requires `std` feature).
-- **TLS** support:
-  - [Rustls](https://crates.io/crates/rustls) with ring crypto (requires `rustls-ring` feature, enabled by default)
-  - [Rustls](https://crates.io/crates/rustls) with aws crypto (requires `rustls-aws` feature)
-  - [Native TLS](https://crates.io/crates/native-tls) (requires `native-tls` feature)
+- **Blocking stream**: one handle over TCP, Unix-domain sockets or TLS, with the STARTTLS upgrade.
+- **Proxy**: tunnel through SOCKS5 or HTTP `CONNECT`, read from the ambient proxy variables by default.
+- **Retry**: a socket that is not ready yet is retried instead of ending the exchange.
+- **TLS**: Rustls (`rustls-ring` default, `rustls-aws`) or Native TLS (`native-tls`).
 
 > [!TIP]
 > pimalaya-stream is written in [Rust](https://www.rust-lang.org/) and uses [cargo features](https://doc.rust-lang.org/cargo/reference/features.html) to gate TLS providers. The default feature set is declared in [Cargo.toml](./Cargo.toml) or on [docs.rs](https://docs.rs/crate/pimalaya-stream/latest/features).
