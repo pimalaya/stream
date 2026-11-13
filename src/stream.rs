@@ -3,8 +3,7 @@
 //! [`Stream`] is a single `Read + Write` type wrapping a TCP socket, a
 //! Unix-domain socket or a TLS session (`rustls` or `native-tls`). TLS
 //! options (provider, crypto, ALPN, a pinned certificate, a client
-//! certificate) come from
-//! [`Tls`].
+//! certificate) come from [`Tls`].
 //!
 //! A stream is opened by one of the `connect_*` methods, each taking the
 //! options its transport has and nothing more: a proxy where there is

@@ -9,13 +9,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Added `tls::TlsClient` and `Tls::client`, a client certificate and its private key as PEM paths, presented when the server asks for one (mutual TLS). Both backends present it; native-tls reads a PKCS#8 key only, rustls PKCS#1 and SEC1 too. Unset by default, so nothing is presented unless a consumer names one.
+- Added `tls::TlsClient` and `Tls::client`, the certificate presented when the server asks for one (mutual TLS).
+
+  Under native-tls the key must be PKCS#8, rustls also reads PKCS#1 and SEC1.
 
 ### Changed
 
-- `Tls::cert` moved to `Tls::server`, a `tls::TlsServer` holding the `cert`. **Breaking.**
+- Moved `Tls::cert` to `Tls::server`, a `tls::TlsServer` holding the `cert`. **Breaking.**
 
-  Beside a client certificate, a bare `cert` no longer said whose it was. `cert: Some(path)` becomes `server: Some(TlsServer { cert: path })`; what the certificate does is unchanged.
+  `cert: Some(path)` becomes `server: Some(TlsServer { cert: path })`.
 
 ## [0.3.2] - 2026-11-13
 

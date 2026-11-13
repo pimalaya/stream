@@ -24,33 +24,30 @@ pub struct Tls {
     /// Rustls-specific options. Ignored when the resolved provider is
     /// [`TlsProvider::NativeTls`].
     pub rustls: Rustls,
-    /// Optional certificate to trust in the server. `None` relies on
-    /// the platform trust store alone.
+    /// Certificate to trust in the server, beside the platform store.
     pub server: Option<TlsServer>,
-    /// Optional certificate the client presents when the server asks for
-    /// one (mutual TLS). `None` presents nothing.
+    /// Certificate presented when the server asks for one (mutual TLS).
     pub client: Option<TlsClient>,
 }
 
 /// What the client trusts in the server, beyond the platform store.
 #[derive(Clone, Debug)]
 pub struct TlsServer {
-    /// A certificate as a path to a PEM file.
+    /// Path to the PEM certificate.
     ///
-    /// Under rustls it is pinned to the server's leaf (e.g. Proton Bridge),
-    /// else used as an extra trust anchor; under native-tls, a root
-    /// certificate.
+    /// Under rustls it is pinned to the server's leaf, else used as an
+    /// extra trust anchor; under native-tls, a root certificate.
     pub cert: PathBuf,
 }
 
-/// The client's own certificate and private key, as paths to PEM files.
+/// The certificate the client presents, with its private key.
 #[derive(Clone, Debug)]
 pub struct TlsClient {
-    /// The certificate, optionally followed by the intermediates the
-    /// server needs to build the chain.
+    /// Path to the PEM certificate, optionally followed by intermediates.
     pub cert: PathBuf,
-    /// The private key. PKCS#8 (`BEGIN PRIVATE KEY`) is the form both
-    /// backends read; rustls also reads PKCS#1 and SEC1.
+    /// Path to the PEM private key.
+    ///
+    /// PKCS#8 under native-tls, rustls also reads PKCS#1 and SEC1.
     pub key: PathBuf,
 }
 

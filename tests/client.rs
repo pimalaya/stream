@@ -31,11 +31,18 @@ use rustls::{
 
 /// PEM files for one run, written under a directory of their own.
 struct Pki {
+    dir: PathBuf,
     ca: PathBuf,
     client_cert: PathBuf,
     client_key: PathBuf,
     server_cert: String,
     server_key: String,
+}
+
+impl Drop for Pki {
+    fn drop(&mut self) {
+        let _ = fs::remove_dir_all(&self.dir);
+    }
 }
 
 fn pki(name: &str) -> Pki {
@@ -65,6 +72,7 @@ fn pki(name: &str) -> Pki {
         client_key: dir.join("client.key.pem"),
         server_cert: server_cert.pem(),
         server_key: server_key.serialize_pem(),
+        dir,
     };
     fs::write(&pki.ca, ca_cert.pem()).unwrap();
     fs::write(&pki.client_cert, client_cert.pem()).unwrap();
@@ -144,8 +152,7 @@ fn without_one_the_server_refuses() {
     let pki = pki("no-client");
     let (port, server) = serve(&pki);
 
-    // NOTE: under TLS 1.3 the client finishes first, so the refusal
-    // arrives as an alert on the first read rather than at connect
+    // NOTE: under TLS 1.3 the refusal arrives on the first read, not at connect
     let refused = Stream::connect_tls("localhost", port, tls(&pki, false))
         .and_then(|mut stream| Ok(stream.read(&mut [0u8; 3])?));
 
