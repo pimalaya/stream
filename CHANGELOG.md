@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added `tls::TlsClient` and `Tls::client`, the certificate presented when the server asks for one (mutual TLS).
+
+  Under native-tls the key must be PKCS#8, rustls also reads PKCS#1 and SEC1.
+
+### Changed
+
+- Moved `Tls::cert` to `Tls::server`, a `tls::TlsServer` holding the `cert`. **Breaking.**
+
+  `cert: Some(path)` becomes `server: Some(TlsServer { cert: path })`.
+
 ## [0.3.2] - 2026-11-13
 
 ### Changed

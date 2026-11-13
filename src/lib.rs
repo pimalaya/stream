@@ -32,7 +32,8 @@
 //!
 //! [`tls`] holds the provider-agnostic TLS options consumed by connect
 //! and upgrade: the provider choice (Rustls with ring or aws crypto,
-//! Native TLS), ALPN identifiers and an optional extra trust anchor.
+//! Native TLS), ALPN identifiers, an optional extra trust anchor and an
+//! optional client certificate.
 //! [`stream`] (`std` feature) is the transport itself, one `Read +
 //! Write` handle over TCP, Unix sockets or a TLS session, with the
 //! upgrade from plain to TLS. [`proxy`] (same feature) is the selector

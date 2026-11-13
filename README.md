@@ -20,6 +20,7 @@ It opens the streams those clients run on: TCP, TLS and Unix-domain sockets, pro
 - **Blocking stream**: one handle over TCP, Unix-domain sockets or TLS, with the STARTTLS upgrade.
 - **Proxy**: tunnel through SOCKS5 or HTTP `CONNECT`, read from the ambient proxy variables by default.
 - **Retry**: a socket that is not ready yet is retried instead of ending the exchange.
+- **Mutual TLS**: a client certificate is presented when the server asks for one.
 - **TLS**: Rustls (`rustls-ring` default, `rustls-aws`) or Native TLS (`native-tls`).
 
 > [!TIP]

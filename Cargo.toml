@@ -41,6 +41,7 @@ required-features = ["std"]
 
 [dev-dependencies]
 env_logger = "0.11"
+rcgen = { version = "0.14", default-features = false, features = ["crypto", "pem", "ring"] }
 
 [dependencies]
 anyhow = { version = "1", default-features = false, features = ["std"] }
