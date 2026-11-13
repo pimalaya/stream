@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Changed the io-proxy requirement to 0.2.
+
+  Its types stay out of the public API. An IPv6 target now goes between brackets in the `CONNECT` request of an HTTP proxy.
+
+### Fixed
+
+- Fixed `proxy::Proxy::connect` taking a bracketed IPv6 target for a hostname.
+
+  A SOCKS5 proxy received it as a domain name, and a direct connection failed to resolve it.
+
+### Security
+
+- Fixed `proxy::Proxy::connect` writing a target host holding a line break or a space into the `CONNECT` request of an HTTP proxy.
+
+  Such a target now fails the connect before anything is written.
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed
