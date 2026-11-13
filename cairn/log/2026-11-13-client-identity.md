@@ -1,7 +1,7 @@
 ---
 cairn: log
 change: client-identity
-landed: 2026-11-09
+landed: 2026-11-13
 ---
 
 # A client certificate for mutual TLS
