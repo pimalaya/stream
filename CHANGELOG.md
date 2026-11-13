@@ -17,6 +17,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Beside a client certificate, a bare `cert` no longer said whose it was. `cert: Some(path)` becomes `server: Some(TlsServer { cert: path })`; what the certificate does is unchanged.
 
+## [0.3.2] - 2026-11-13
+
+### Changed
+
+- Changed the io-proxy requirement to 0.2.
+
+  Its types stay out of the public API. An IPv6 target now goes between brackets in the `CONNECT` request of an HTTP proxy.
+
+### Fixed
+
+- Fixed `proxy::Proxy::connect` taking a bracketed IPv6 target for a hostname.
+
+  A SOCKS5 proxy received it as a domain name, and a direct connection failed to resolve it.
+
+### Security
+
+- Fixed `proxy::Proxy::connect` writing a target host holding a line break or a space into the `CONNECT` request of an HTTP proxy.
+
+  Such a target now fails the connect before anything is written.
+
 ## [0.3.1] - 2026-11-03
 
 ### Changed
@@ -159,7 +179,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
   Forwarded to `native-tls/vendored` so consumers can compile the underlying TLS dependencies in vendored mode.
 
-[unreleased]: https://github.com/pimalaya/stream/compare/v0.3.1..HEAD
+[unreleased]: https://github.com/pimalaya/stream/compare/v0.3.2..HEAD
+[0.3.2]: https://github.com/pimalaya/stream/compare/v0.3.1..v0.3.2
 [0.3.1]: https://github.com/pimalaya/stream/compare/v0.3.0..v0.3.1
 [0.3.0]: https://github.com/pimalaya/stream/compare/v0.2.0..v0.3.0
 [0.2.0]: https://github.com/pimalaya/stream/compare/v0.1.2..v0.2.0

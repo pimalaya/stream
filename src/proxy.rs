@@ -23,7 +23,10 @@
 //! Logging follows the crate rules: debug marks the connect decision
 //! (kind, proxy endpoint, source). Credentials never reach the logs.
 
-use std::{env, net::TcpStream};
+use std::{
+    env,
+    net::{Ipv6Addr, TcpStream},
+};
 
 use anyhow::{Context, Result, bail};
 use io_proxy::{
@@ -32,7 +35,7 @@ use io_proxy::{
     socks::v5::{address::Socks5Address, auth::Socks5Credentials},
 };
 use log::debug;
-use secrecy::{ExposeSecret, SecretString};
+use secrecy::SecretString;
 use url::Url;
 
 /// Username/password credentials for a proxy.
@@ -122,7 +125,18 @@ impl Proxy {
     /// before), so `no_proxy` sees the actual target. On success the
     /// returned stream is positioned at the start of the tunnel, ready
     /// for the caller's TLS handshake or plaintext protocol.
+    ///
+    /// An IPv6 literal is taken with or without its URL brackets.
     pub fn connect(&self, host: &str, port: u16) -> Result<TcpStream> {
+        let literal = host
+            .strip_prefix('[')
+            .and_then(|host| host.strip_suffix(']'));
+
+        let host = match literal {
+            Some(ip) if ip.parse::<Ipv6Addr>().is_ok() => ip,
+            _ => host,
+        };
+
         let (proxy, source) = match self {
             Self::System => Self::from_env(host),
             other => (other.clone(), "config"),
@@ -144,10 +158,7 @@ impl Proxy {
                     .with_context(|| format!("connect socks5 proxy {phost}:{pport}"))?;
                 let target = Socks5Address::new(host, port)?;
                 let credentials = match auth {
-                    Some(auth) => Some(Socks5Credentials::new(
-                        &auth.user,
-                        auth.pass.expose_secret(),
-                    )?),
+                    Some(auth) => Some(Socks5Credentials::new(&auth.user, auth.pass.clone())?),
                     None => None,
                 };
                 connect_socks5(&mut tcp, target, credentials)
@@ -164,7 +175,7 @@ impl Proxy {
                     .with_context(|| format!("connect http proxy {phost}:{pport}"))?;
                 let credentials = auth
                     .as_ref()
-                    .map(|auth| HttpCredentials::new(&auth.user, auth.pass.expose_secret()));
+                    .map(|auth| HttpCredentials::new(&auth.user, auth.pass.clone()));
                 connect_http(&mut tcp, host, port, credentials)
                     .with_context(|| format!("http connect to {host}:{port}"))?;
                 Ok(tcp)
@@ -247,6 +258,16 @@ impl Proxy {
 
 #[cfg(test)]
 mod tests {
+    use std::{
+        io::{ErrorKind, Read, Write},
+        net::{Shutdown, TcpListener},
+        thread::{self, JoinHandle},
+        time::Duration,
+    };
+
+    use io_proxy::client::ProxyClientError;
+    use secrecy::ExposeSecret;
+
     use super::*;
 
     #[test]
@@ -288,5 +309,106 @@ mod tests {
         assert!(Proxy::bypasses("127.0.0.1"));
         assert!(Proxy::bypasses("::1"));
         assert!(Proxy::bypasses("dev.localhost"));
+    }
+
+    /// Serves one connection as a proxy answering `reply` then closing its
+    /// side, and hands back what the client wrote.
+    fn fake_proxy(reply: &'static [u8]) -> (u16, JoinHandle<Vec<u8>>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+
+        let proxy = thread::spawn(move || {
+            let (mut tcp, _) = listener.accept().unwrap();
+            tcp.set_read_timeout(Some(Duration::from_secs(5))).unwrap();
+            tcp.write_all(reply).unwrap();
+            tcp.shutdown(Shutdown::Write).unwrap();
+
+            let mut written = Vec::new();
+            let _ = tcp.read_to_end(&mut written);
+            written
+        });
+
+        (port, proxy)
+    }
+
+    #[test]
+    fn connect_sends_bracketed_ipv6_target_to_socks5_as_address() {
+        // method selection (no auth), then a success reply bound to 0.0.0.0:0
+        let (port, proxy) = fake_proxy(&[0x05, 0x00, 0x05, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0]);
+
+        let socks5 = Proxy::Socks5 {
+            host: "127.0.0.1".into(),
+            port,
+            auth: None,
+        };
+        drop(socks5.connect("[2001:db8::1]", 993).unwrap());
+
+        let mut request = vec![0x05, 0x01, 0x00, 0x04];
+        request.extend_from_slice(&"2001:db8::1".parse::<Ipv6Addr>().unwrap().octets());
+        request.extend_from_slice(&993u16.to_be_bytes());
+
+        // the 3 first bytes are the greeting
+        assert_eq!(proxy.join().unwrap()[3..], request);
+    }
+
+    #[test]
+    fn connect_fails_when_socks5_stream_ends_during_handshake() {
+        // method selection (no auth), then a reply without its bound address
+        let (port, _) = fake_proxy(&[0x05, 0x00, 0x05, 0x00, 0x00, 0x01]);
+
+        let socks5 = Proxy::Socks5 {
+            host: "127.0.0.1".into(),
+            port,
+            auth: None,
+        };
+        let err = socks5.connect("imap.example.org", 993).unwrap_err();
+
+        assert_eq!(err.to_string(), "socks5 handshake to imap.example.org:993");
+        assert!(
+            matches!(
+                err.downcast_ref(),
+                Some(ProxyClientError::Io(err)) if err.kind() == ErrorKind::UnexpectedEof
+            ),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn connect_fails_when_http_stream_ends_during_handshake() {
+        let (port, _) = fake_proxy(b"HTTP/1.1 200 Connection established\r\n");
+
+        let http = Proxy::Http {
+            host: "127.0.0.1".into(),
+            port,
+            auth: None,
+        };
+        let err = http.connect("imap.example.org", 993).unwrap_err();
+
+        assert_eq!(err.to_string(), "http connect to imap.example.org:993");
+        assert!(
+            matches!(
+                err.downcast_ref(),
+                Some(ProxyClientError::Io(err)) if err.kind() == ErrorKind::UnexpectedEof
+            ),
+            "got {err:?}"
+        );
+    }
+
+    #[test]
+    fn connect_refuses_invalid_http_target_before_writing() {
+        let (port, proxy) = fake_proxy(b"");
+
+        let http = Proxy::Http {
+            host: "127.0.0.1".into(),
+            port,
+            auth: None,
+        };
+        let err = http.connect("h\r\nX-Injected: 1", 993).unwrap_err();
+
+        assert!(
+            format!("{err:#}").ends_with("invalid target host"),
+            "got {err:#}"
+        );
+        assert_eq!(proxy.join().unwrap(), b"");
     }
 }
