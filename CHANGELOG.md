@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Moved to io-proxy 0.3, naming its `std` feature for the blocking proxy client.
+
 ## [0.4.0] - 2026-11-13
 
 ### Added

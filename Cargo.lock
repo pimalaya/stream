@@ -476,9 +476,9 @@ dependencies = [
 
 [[package]]
 name = "io-proxy"
-version = "0.2.0"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6b8a1b3698a70ea041d11dea1532276cf270aa289388bce8c68b27d949eb3506"
+checksum = "08d43e8139aa88f8248928a607a60767b93fc4bebf1e1d36ce761554b7397b3c"
 dependencies = [
  "base64-codec",
  "log",
